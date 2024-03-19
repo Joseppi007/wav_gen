@@ -153,7 +153,7 @@ fn print_wave( file: File ) -> () {
 			eprint!("Meta Data\n");
 			for piece in &pieces[1..] {
 			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
-			    eprint!("\t{} {}\n", halves[0], halves[1]);
+			    eprint!("\t{}\t{}\n", halves[0], halves[1]);
 			    match halves[0].as_str() {
 				"tempo" => { meta_data.tempo = halves[1].parse().unwrap(); },
 				"length" => { meta_data.length = halves[1].parse().unwrap(); },
@@ -182,7 +182,7 @@ fn print_wave( file: File ) -> () {
 			let mut note: Note = default.clone();
 			for piece in &pieces[1..] {
 			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
-			    eprint!("\t{} {}\n", halves[0], halves[1]);
+			    eprint!("\t{}\t{}\n", halves[0], halves[1]);
 			    match halves[0].as_str() {
 				"wave" => { note.wave_form = halves[1].parse().unwrap(); },
 				"volume" => { note.volume = halves[1].parse().unwrap(); },
