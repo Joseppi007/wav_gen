@@ -1,5 +1,5 @@
 META tempo=100 length=2
-DEFAULT wave=squ volume=1 frequency=440 duration=0.25
+DEFAULT wave=squ volume=0.25 frequency=440 duration=0.25
 NOTE time=0 frequency=440 duration=1.0
 NOTE time=0.5 frequency=660 duration=0.5
 NOTE time=1.0 frequency=220

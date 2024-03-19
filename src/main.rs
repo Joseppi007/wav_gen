@@ -26,10 +26,11 @@ fn scale_time_sin (time_in: u128, frequency_a: f64, frequency_b: f64, meta_frequ
 }
 
 fn write_sample (amplitude: f64) -> () {
-    let mut a: f64 = amplitude * 255.0;
-    if a > 255.0 { a = 255.0; }
-    if a < 0.0   { a = 0.0;   }
-    let _ = std::io::stdout().write(&[ a as u8 ]);
+    let mut a: f64 = amplitude * 65535.0 - 32768.0;
+    if a > 32767.0 { a = 32767.0; }
+    if a < -32768.0   { a = -32768.0;   }
+    let double_byte: i16 = a as i16;
+    let _ = std::io::stdout().write(&double_byte.to_le_bytes());
 }
 
 #[derive(Copy, Clone)]
@@ -134,7 +135,7 @@ impl MetaData {
 }
 
 fn print_wave( file: File ) -> () {
-    let _ = std::io::stdout().write(&[82, 73, 70, 70, 36, 0, 0, 128, 87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, CHANNEL_COUNT, 0, 128, 62, 0, 0, 0, 0, 0, 0, 1, 0, 8, 0, 100, 97, 116, 97]);
+    let _ = std::io::stdout().write(&[82, 73, 70, 70, 62, 250, 0, 0, 87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, CHANNEL_COUNT, 0, 128, 62, 0, 0, 0, 125, 0, 0, 2, 0, 16, 0, 76, 73, 83, 84, 26, 0, 0, 0, 73, 78, 70, 79, 73, 83, 70, 84, 14, 0, 0, 0, 76, 97, 118, 102, 54, 48, 46, 49, 54, 46, 49, 48, 48, 0, 100, 97, 116, 97, 248, 249]);
     
     let lines = std::io::BufReader::new(file).lines();
 
