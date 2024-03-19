@@ -25,38 +25,6 @@ fn scale_time_sin (time_in: u128, frequency_a: f64, frequency_b: f64, meta_frequ
     frequency_mid * time + frequency_diff * (1.0/(std::f64::consts::TAU*meta_frequency)*(meta_frequency*std::f64::consts::TAU*time).sin())
 }
 
-fn sine_wave (virt_time: f64, amplitude: f64) -> f64 { // 1 Hz
-    (1.0+( virt_time * std::f64::consts::TAU ).sin())*amplitude
-}
-
-fn square_wave (virt_time: f64, amplitude: f64) -> f64 { // 1 Hz
-    if virt_time % 1.0 < 0.5 {
-	return 0.0;
-    } else {
-	return 2.0*amplitude;
-    }
-}
-
-fn triangle_wave (virt_time: f64, amplitude: f64) -> f64 { // 1 Hz
-    if virt_time % 1.0 < 0.5 {
-	virt_time * 4.0 * amplitude
-    } else {
-	(1.0-virt_time) * 4.0 * amplitude
-    }
-}
-
-fn pulse_wave (virt_time: f64, amplitude: f64, ratio: f64) -> f64 { // 1 Hz
-    if virt_time % 1.0 < 1.0 - ratio {
-	0.0
-    } else {
-	2.0*amplitude
-    }
-}
-
-fn saw_tooth_wave (virt_time: f64, amplitude: f64) -> f64 { // 1Hz
-    return (virt_time % 1.0) * 2.0 * amplitude;
-}
-
 fn write_sample (amplitude: f64) -> () {
     let mut a: f64 = amplitude * 255.0;
     if a > 255.0 { a = 255.0; }
@@ -83,11 +51,11 @@ impl FromStr for WaveForm {
 	    parts => {
 		if parts.len() < 1 { return Err(ParseError); }
 		match parts[0] {
-		    "Square" => { Ok(WaveForm::Square) },
-		    "Triangle" => { Ok(WaveForm::Triangle) },
-		    "Sine" => { Ok(WaveForm::Sine) },
-		    "SawTooth" => { Ok(WaveForm::SawTooth) },
-		    "Pulse" => {
+		    "squ" => { Ok(WaveForm::Square) },
+		    "tri" => { Ok(WaveForm::Triangle) },
+		    "sin" => { Ok(WaveForm::Sine) },
+		    "saw" => { Ok(WaveForm::SawTooth) },
+		    "pul" => {
 			if parts.len() < 2 { return Err(ParseError); }
 			match parts[1].parse() {
 			    Ok(v) => {Ok(WaveForm::Pulse(v))},
@@ -96,6 +64,40 @@ impl FromStr for WaveForm {
 		    },
 		    _ => { Err(ParseError) }
 		}
+	    },
+	}
+    }
+}
+
+impl WaveForm {
+    fn audio_at (self, virt_time: f64) -> f64 {
+	match self {
+	    WaveForm::Square => {
+		if virt_time % 1.0 < 0.5 {
+		    return 0.0;
+		} else {
+		    return 1.0;
+		}
+	    },
+	    WaveForm::Triangle => {
+		if virt_time % 1.0 < 0.5 {
+		    virt_time * 2.0
+		} else {
+		    (1.0-virt_time) * 2.0
+		}
+	    },
+	    WaveForm::Sine => {
+		(1.0+( virt_time * std::f64::consts::TAU ).sin())*0.5
+	    },
+	    WaveForm::Pulse(ratio) => {
+		if virt_time % 1.0 < 1.0 - ratio {
+		    0.0
+		} else {
+		    1.0
+		}
+	    },
+	    WaveForm::SawTooth => {
+		virt_time % 1.0
 	    },
 	}
     }
@@ -113,6 +115,9 @@ struct Note {
 impl Note {
     fn new () -> Self {
 	Self{wave_form: WaveForm::Square, volume: 1.0, frequency: 440.0, duration: 0.25, time: 0.0}
+    }
+    fn audio_at (self, time: f64) -> f64 {
+	self.wave_form.audio_at(time * self.frequency) * self.volume
     }
 }
 
@@ -135,6 +140,7 @@ fn print_wave( file: File ) -> () {
 
     let mut default: Note = Note::new();
     let mut meta_data: MetaData = MetaData::new();
+    let mut notes: Vec<Note> = Vec::<Note>::new();
     
     let sep  = Regex::new(r"[ \t]+").expect("Invalid Regex");
     let sep1 = Regex::new(r"[=]").expect("Invalid Regex");
@@ -151,7 +157,7 @@ fn print_wave( file: File ) -> () {
 			    match halves[0].as_str() {
 				"tempo" => { meta_data.tempo = halves[1].parse().unwrap(); },
 				"length" => { meta_data.length = halves[1].parse().unwrap(); },
-				_ => {}
+				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
 			}
 		    },
@@ -161,12 +167,13 @@ fn print_wave( file: File ) -> () {
 			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
 			    eprint!("\t{}\t{}\n", halves[0], halves[1]);
 			    match halves[0].as_str() {
-				"wave_form" => { default.wave_form = halves[1].parse().unwrap(); },
+				"wave" => { default.wave_form = halves[1].parse().unwrap(); },
 				"volume" => { default.volume = halves[1].parse().unwrap(); },
 				"frequency" => { default.frequency = halves[1].parse().unwrap(); },
+				"pitch" => { default.frequency = halves[1].parse().unwrap(); }, // Placeholder
 				"duration" => { default.duration = halves[1].parse().unwrap(); },
 				"time" => { default.time = halves[1].parse().unwrap(); },
-				_ => {}
+				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
 			}
 		    },
@@ -177,14 +184,16 @@ fn print_wave( file: File ) -> () {
 			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
 			    eprint!("\t{} {}\n", halves[0], halves[1]);
 			    match halves[0].as_str() {
-				"wave_form" => { note.wave_form = halves[1].parse().unwrap(); },
+				"wave" => { note.wave_form = halves[1].parse().unwrap(); },
 				"volume" => { note.volume = halves[1].parse().unwrap(); },
 				"frequency" => { note.frequency = halves[1].parse().unwrap(); },
+				"pitch" => { note.frequency = halves[1].parse().unwrap(); }, // Placeholder
 				"duration" => { note.duration = halves[1].parse().unwrap(); },
 				"time" => { note.time = halves[1].parse().unwrap(); },
-				_ => {}
+				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
 			}
+			notes.push(note);
 		    },
 		    first_piece => {
 			eprint!("Unrecognised command: {}\n", first_piece);
@@ -194,24 +203,18 @@ fn print_wave( file: File ) -> () {
 	    Result::Err(err) => { eprint!("{:?}", err); }
 	}
     }
-    
-    for i in 0..9600 {
-	let mut acc: f64 = 0.0;
-	acc += square_wave( scale_time_linear(i, 440.0), 0.25*(1.0-(i as f64/9600.0)) );
-	acc += saw_tooth_wave( scale_time_linear(i, 660.0), 0.25*(1.0-(i as f64/19200.0)) );
-	write_sample( acc );
-    }
-    for i in 0..4800 {
-	let mut acc: f64 = 0.0;
-	acc += square_wave( scale_time_linear(i, 440.0), 0.25*(1.0-(i as f64/9600.0)) );
-	acc += saw_tooth_wave( scale_time_linear(i, 330.0), 0.25*(1.0-(i as f64/19200.0)) );
-	write_sample( acc );
-    }
-    for i in 0..4800 {
-	let mut acc: f64 = 0.0;
-	acc += square_wave( scale_time_linear(i, 440.0), 0.25*(1.0-(i as f64/9600.0)) );
-	acc += saw_tooth_wave( scale_time_linear(i, 880.0), 0.25*(1.0-(i as f64/19200.0)) );
-	write_sample( acc );
+
+    for sample_index in 0..(meta_data.length*(SAMPLES_PER_SECOND as f64)) as u128 {
+	let current_time: f64 = ((sample_index as f64) * meta_data.tempo) / ((SAMPLES_PER_SECOND as f64) * 60.0); // In Beats
+	let mut note_start_time_accumulator: f64 = 0.0;
+	let mut audio_accumulator: f64 = 0.0;
+	for note in &notes {
+	    note_start_time_accumulator += note.time;
+	    if current_time < note_start_time_accumulator { break; }
+	    if current_time > note_start_time_accumulator + note.duration { continue; }
+	    audio_accumulator += note.audio_at(current_time);
+	}
+	write_sample( audio_accumulator );
     }
 }
 
