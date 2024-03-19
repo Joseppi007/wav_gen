@@ -1,0 +1,6 @@
+META tempo=100 length=16
+DEFAULT wave=squ volume=1 pitch=440 duration=0.25
+NOTE time=0 pitch=440
+NOTE time=0 pitch=660
+NOTE time=0.5 pitch=220
+NOTE time=0.25 pitch=330

@@ -1,7 +1,10 @@
 use std::io::Write;
 use std::fs::File;
+use std::io::BufRead;
+use regex::Regex;
 
 const SAMPLES_PER_SECOND: u128 = 16000;
+const CHANNEL_COUNT: u8 = 1;
 
 fn scale_time_exp (time_in: u128, frequency_start: f64, frequency_stop: f64, duration: f64) -> f64 { // Returns a virtual time in seconds
     let ln_ratio = (frequency_stop / frequency_start).ln();
@@ -61,10 +64,64 @@ fn write_sample (amplitude: f64) -> () {
 }
 
 fn print_wave( file: File ) -> () {
-    let _ = std::io::stdout().write(&[82, 73, 70, 70, 36, 0, 0, 128, 87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, 1, 0, 128, 62, 0, 0, 0, 0, 0, 0, 1, 0, 8, 0, 100, 97, 116, 97]);
+    let _ = std::io::stdout().write(&[82, 73, 70, 70, 36, 0, 0, 128, 87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, CHANNEL_COUNT, 0, 128, 62, 0, 0, 0, 0, 0, 0, 1, 0, 8, 0, 100, 97, 116, 97]);
+    
+    let lines = std::io::BufReader::new(file).lines();
 
-    for i in 0..16000 {
-	write_sample( square_wave( scale_time_linear(i, 440.0), 0.5 ) );
+    let sep  = Regex::new(r"[ \t]+").expect("Invalid Regex");
+    let sep1 = Regex::new(r"=").expect("Invalid Regex");
+    for l in lines {
+	match l {
+	    Result::Ok(line) => {
+		let pieces: Vec<String> = sep.split(line.as_str()).into_iter().map(|e| e.to_string()).collect();
+		match pieces[0].as_str() {
+		    "META" => {
+			eprint!("Meta Data\n");
+			for piece in &pieces[1..] {
+			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
+			    eprint!("\t{} {}\n", halves[0], halves[1]);
+			}
+		    },
+		    "DEFAULT" => {
+			eprint!("Note Default\n");
+			for piece in &pieces[1..] {
+			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
+			    eprint!("\t{}\t{}\n", halves[0], halves[1]);
+			}
+		    },
+		    "NOTE" => {
+			eprint!("Note\n");
+			for piece in &pieces[1..] {
+			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
+			    eprint!("\t{} {}\n", halves[0], halves[1]);
+			}
+		    },
+		    first_piece => {
+			eprint!("Unrecognised command: {}\n", first_piece);
+		    }
+		}
+	    },
+	    Result::Err(err) => { eprint!("{:?}", err); }
+	}
+    }
+    
+    for i in 0..9600 {
+	let mut acc: f64 = 0.0;
+	acc += square_wave( scale_time_linear(i, 440.0), 0.25*(1.0-(i as f64/9600.0)) );
+	acc += saw_tooth_wave( scale_time_linear(i, 660.0), 0.25*(1.0-(i as f64/19200.0)) );
+	write_sample( acc );
+    }
+    for i in 0..4800 {
+	let mut acc: f64 = 0.0;
+	acc += square_wave( scale_time_linear(i, 440.0), 0.25*(1.0-(i as f64/9600.0)) );
+	acc += saw_tooth_wave( scale_time_linear(i, 330.0), 0.25*(1.0-(i as f64/19200.0)) );
+	write_sample( acc );
+    }
+    for i in 0..4800 {
+	let mut acc: f64 = 0.0;
+	acc += square_wave( scale_time_linear(i, 440.0), 0.25*(1.0-(i as f64/9600.0)) );
+	acc += saw_tooth_wave( scale_time_linear(i, 880.0), 0.25*(1.0-(i as f64/19200.0)) );
+	write_sample( acc );
     }
 }
 
