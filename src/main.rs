@@ -2,6 +2,7 @@ use std::io::Write;
 use std::fs::File;
 use std::io::BufRead;
 use regex::Regex;
+use std::str::FromStr;
 
 const SAMPLES_PER_SECOND: u128 = 16000;
 const CHANNEL_COUNT: u8 = 1;
@@ -63,13 +64,80 @@ fn write_sample (amplitude: f64) -> () {
     let _ = std::io::stdout().write(&[ a as u8 ]);
 }
 
+#[derive(Copy, Clone)]
+enum WaveForm {
+    Square,
+    Triangle,
+    Sine,
+    Pulse(f64),
+    SawTooth
+}
+
+#[derive(Debug)]
+struct ParseError;
+impl FromStr for WaveForm {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+	let sep = Regex::new(r"[(,)]+").expect("Invalid Regex");
+	match sep.split(s).into_iter().filter(|e| e.len() > 0).collect::<Vec<&str>>() {
+	    parts => {
+		if parts.len() < 1 { return Err(ParseError); }
+		match parts[0] {
+		    "Square" => { Ok(WaveForm::Square) },
+		    "Triangle" => { Ok(WaveForm::Triangle) },
+		    "Sine" => { Ok(WaveForm::Sine) },
+		    "SawTooth" => { Ok(WaveForm::SawTooth) },
+		    "Pulse" => {
+			if parts.len() < 2 { return Err(ParseError); }
+			match parts[1].parse() {
+			    Ok(v) => {Ok(WaveForm::Pulse(v))},
+			    Err(_) => {Err(ParseError)}
+			}
+		    },
+		    _ => { Err(ParseError) }
+		}
+	    },
+	}
+    }
+}
+
+#[derive(Copy, Clone)]
+struct Note {
+    wave_form: WaveForm,
+    volume: f64, // From 0 to 1
+    frequency: f64, // In Hz
+    duration: f64, // In beats
+    time: f64, // In beats since last note
+}
+
+impl Note {
+    fn new () -> Self {
+	Self{wave_form: WaveForm::Square, volume: 1.0, frequency: 440.0, duration: 0.25, time: 0.0}
+    }
+}
+
+#[derive(Copy, Clone)]
+struct MetaData {
+    tempo: f64,
+    length: f64,
+}
+
+impl MetaData {
+    fn new () -> Self {
+	Self{tempo: 100.0, length: 16.0}
+    }
+}
+
 fn print_wave( file: File ) -> () {
     let _ = std::io::stdout().write(&[82, 73, 70, 70, 36, 0, 0, 128, 87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, CHANNEL_COUNT, 0, 128, 62, 0, 0, 0, 0, 0, 0, 1, 0, 8, 0, 100, 97, 116, 97]);
     
     let lines = std::io::BufReader::new(file).lines();
 
+    let mut default: Note = Note::new();
+    let mut meta_data: MetaData = MetaData::new();
+    
     let sep  = Regex::new(r"[ \t]+").expect("Invalid Regex");
-    let sep1 = Regex::new(r"=").expect("Invalid Regex");
+    let sep1 = Regex::new(r"[=]").expect("Invalid Regex");
     for l in lines {
 	match l {
 	    Result::Ok(line) => {
@@ -80,6 +148,11 @@ fn print_wave( file: File ) -> () {
 			for piece in &pieces[1..] {
 			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
 			    eprint!("\t{} {}\n", halves[0], halves[1]);
+			    match halves[0].as_str() {
+				"tempo" => { meta_data.tempo = halves[1].parse().unwrap(); },
+				"length" => { meta_data.length = halves[1].parse().unwrap(); },
+				_ => {}
+			    }
 			}
 		    },
 		    "DEFAULT" => {
@@ -87,13 +160,30 @@ fn print_wave( file: File ) -> () {
 			for piece in &pieces[1..] {
 			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
 			    eprint!("\t{}\t{}\n", halves[0], halves[1]);
+			    match halves[0].as_str() {
+				"wave_form" => { default.wave_form = halves[1].parse().unwrap(); },
+				"volume" => { default.volume = halves[1].parse().unwrap(); },
+				"frequency" => { default.frequency = halves[1].parse().unwrap(); },
+				"duration" => { default.duration = halves[1].parse().unwrap(); },
+				"time" => { default.time = halves[1].parse().unwrap(); },
+				_ => {}
+			    }
 			}
 		    },
 		    "NOTE" => {
 			eprint!("Note\n");
+			let mut note: Note = default.clone();
 			for piece in &pieces[1..] {
 			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
 			    eprint!("\t{} {}\n", halves[0], halves[1]);
+			    match halves[0].as_str() {
+				"wave_form" => { note.wave_form = halves[1].parse().unwrap(); },
+				"volume" => { note.volume = halves[1].parse().unwrap(); },
+				"frequency" => { note.frequency = halves[1].parse().unwrap(); },
+				"duration" => { note.duration = halves[1].parse().unwrap(); },
+				"time" => { note.time = halves[1].parse().unwrap(); },
+				_ => {}
+			    }
 			}
 		    },
 		    first_piece => {
