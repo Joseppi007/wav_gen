@@ -1,6 +1,18 @@
-META tempo=100 length=2
+META tempo=100 length=16
 DEFAULT wave=squ volume=0.25 frequency=440 duration=0.25
 NOTE time=0 frequency=440 duration=1.0
 NOTE time=0.5 frequency=660 duration=0.5
 NOTE time=1.0 frequency=220
 NOTE time=0.25 frequency=330
+DEFAULT wave=saw volume=0.25 frequency=440 duration=1
+NOTE time=0.75
+NOTE time=0.5 frequency=880
+DEFAULT wave=squ volume=0.25 pitch=A4 duration=0.25 time=0.25
+NOTE time=1.5 pitch=C4
+NOTE pitch=D4
+NOTE pitch=E4
+NOTE pitch=F4
+NOTE pitch=G4
+NOTE pitch=A5
+NOTE pitch=B5
+NOTE pitch=C5
