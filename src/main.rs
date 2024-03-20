@@ -28,7 +28,7 @@ fn scale_time_sin (time_in: u128, frequency_a: f64, frequency_b: f64, meta_frequ
 fn sample_data (amplitude: f64) -> [u8; 2] {
     let mut a: f64 = amplitude * 65535.0 - 32768.0;
     if a > 32767.0 { a = 32767.0; }
-    if a < -32768.0   { a = -32768.0;   }
+    if a < -32768.0 { a = -32768.0; }
     let double_byte: i16 = a as i16;
     double_byte.to_le_bytes()
 }
@@ -234,9 +234,9 @@ impl WaveForm {
 	match self {
 	    WaveForm::Square => {
 		if virt_time % 1.0 < 0.5 {
-		    return 0.0;
+		    0.0
 		} else {
-		    return 1.0;
+		    1.0
 		}
 	    },
 	    WaveForm::Triangle => {
@@ -276,7 +276,7 @@ impl Note {
     fn new () -> Self {
 	Self{wave_form: WaveForm::Square, volume: 0.25, frequency: 440.0, duration: 0.25, time: 0.0}
     }
-    fn audio_at (self, time: f64) -> f64 {
+    fn audio_at (self, time: f64, meta_data: MetaData) -> f64 {
 	self.wave_form.audio_at(time * self.frequency) * self.volume
     }
 }
@@ -365,24 +365,61 @@ fn print_wave( file: File ) -> () {
 	}
     }
 
-    for sample_index in 0..(meta_data.length*(SAMPLES_PER_SECOND as f64)) as u128 {
-	let current_time: f64 = ((sample_index as f64) * meta_data.tempo) / ((SAMPLES_PER_SECOND as f64) * 60.0); // In Beats
-	let mut note_start_time_accumulator: f64 = 0.0;
+    for sample_index in 0..(meta_data.length*(SAMPLES_PER_SECOND as f64)*(60.0/meta_data.tempo)) as u128 {
+	let current_time_seconds: f64 = (sample_index as f64) / (SAMPLES_PER_SECOND as f64);
+	let current_time_beats: f64 = current_time_seconds * (meta_data.tempo / 60.0);
 	let mut audio_accumulator: f64 = 0.0;
 	for note in &notes {
-	    note_start_time_accumulator += note.time;
-	    if current_time < note_start_time_accumulator { break; }
-	    if current_time > note_start_time_accumulator + note.duration { continue; }
-	    audio_accumulator += note.audio_at(current_time);
+	    if current_time_beats < note.time { break; }
+	    if current_time_beats > note.time + note.duration { continue; }
+	    audio_accumulator += note.audio_at(current_time_seconds , meta_data);
 	}
 	data_buffer.extend_from_slice(&sample_data(audio_accumulator));
     }
 
-    let _ = std::io::stdout().write(&[82, 73, 70, 70]);
-    let _ = std::io::stdout().write(&(data_buffer.len() as u32 + 68).to_le_bytes());
-    let _ = std::io::stdout().write(&[87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, CHANNEL_COUNT, 0, 128, 62, 0, 0, 0, 125, 0, 0, 2, 0, 16, 0, 76, 73, 83, 84, 26, 0, 0, 0, 73, 78, 70, 79, 73, 83, 70, 84, 14, 0, 0, 0, 76, 97, 118, 102, 54, 48, 46, 49, 54, 46, 49, 48, 48, 0, 100, 97, 116, 97]);
-    let _ = std::io::stdout().write(&(data_buffer.len() as u32).to_le_bytes());
-    let _ = std::io::stdout().write(&data_buffer);
+    /*
+    match std::io::stdout().write(&[82, 73, 70, 70]) {
+	Ok(s) => {eprint!("Printed {} bytes\n", s);},
+	Err(err) => {eprint!("Error printing the data out: {}\n", err);}
+    }
+    match std::io::stdout().write(&(data_buffer.len() as u32 + 68).to_le_bytes()) {
+	Ok(s) => {eprint!("Printed {} bytes\n", s);},
+	Err(err) => {eprint!("Error printing the data out: {}\n", err);}
+    }
+    match std::io::stdout().write(&[87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, CHANNEL_COUNT, 0, 128, 62, 0, 0, 0, 125, 0, 0, 2, 0, 16, 0, 76, 73, 83, 84, 26, 0, 0, 0, 73, 78, 70, 79, 73, 83, 70, 84, 14, 0, 0, 0, 76, 97, 118, 102, 54, 48, 46, 49, 54, 46, 49, 48, 48, 0, 100, 97, 116, 97]) {
+	Ok(s) => {eprint!("Printed {} bytes\n", s);},
+	Err(err) => {eprint!("Error printing the data out: {}\n", err);}
+    }
+    match std::io::stdout().write(&(data_buffer.len() as u32).to_le_bytes()) {
+	Ok(s) => {eprint!("Printed {} bytes\n", s);},
+	Err(err) => {eprint!("Error printing the data out: {}\n", err);}
+    }
+    match std::io::stdout().write(&data_buffer) {
+	Ok(s) => {eprint!("Printed {} bytes\n", s);},
+	Err(err) => {eprint!("Error printing the data out: {}\n", err);}
+    }
+    */
+
+    print_bytes(&[82, 73, 70, 70]);
+    print_bytes(&(data_buffer.len() as u32 + 68).to_le_bytes());
+    print_bytes(&[87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, CHANNEL_COUNT, 0, 128, 62, 0, 0, 0, 125, 0, 0, 2, 0, 16, 0, 76, 73, 83, 84, 26, 0, 0, 0, 73, 78, 70, 79, 73, 83, 70, 84, 14, 0, 0, 0, 76, 97, 118, 102, 54, 48, 46, 49, 54, 46, 49, 48, 48, 0, 100, 97, 116, 97]);
+    print_bytes(&(data_buffer.len() as u32).to_le_bytes());
+    print_bytes(&data_buffer);
+}
+
+fn print_bytes (bytes: &[u8]) -> () {
+    let mut a: usize = 0;
+    while a < bytes.len() {
+	match std::io::stdout().write(&bytes[a..]) {
+	    Ok(s) => {
+		a += s;
+		if a < bytes.len() {
+		    eprint!("Failed to print {} bytes. Retrying...\n", bytes.len() - a);
+		}
+	    },
+	    Err(err) => {}
+	}
+    }
 }
 
 fn main() {
