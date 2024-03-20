@@ -287,7 +287,7 @@ impl Note {
     fn audio_at (self, time: f64, meta_data: MetaData) -> f64 {
 	let capped_time_ms: f64 = if time > (self.time + self.duration) * 60.0 / meta_data.tempo { (self.time + self.duration) * 60000.0 / meta_data.tempo } else { time * 1000.0 };
 	let time_since_start_ms: f64 = capped_time_ms - self.time * 60000.0 / meta_data.tempo; // in ms
-	let time_until_end_ms: f64 = (self.time + self.duration + self.release * 0.001) * 60000.0 / meta_data.tempo - time * 1000.0; // in ms
+	let time_until_end_ms: f64 = (self.time + self.duration) * 60000.0 / meta_data.tempo + self.release - time * 1000.0; // in ms
 	let mut volume_multiplier: f64 = 1.0;
 	if time_since_start_ms < self.attack {
 	    volume_multiplier *= time_since_start_ms / self.attack;
@@ -400,7 +400,7 @@ fn print_wave( file: File ) -> () {
 	let mut audio_accumulator: f64 = 0.0;
 	for note in &notes {
 	    if current_time_beats < note.time { break; }
-	    if current_time_beats > note.time + note.duration + note.release * 0.001 { continue; }
+	    if current_time_beats > note.time + note.duration + ( note.release * meta_data.tempo / 60000.0 ) { continue; }
 	    audio_accumulator += note.audio_at(current_time_seconds , meta_data);
 	}
 	data_buffer.extend_from_slice(&sample_data(audio_accumulator));
