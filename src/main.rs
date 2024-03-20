@@ -33,6 +33,10 @@ fn sample_data (amplitude: f64) -> [u8; 2] {
     double_byte.to_le_bytes()
 }
 
+fn lerp (x: f64, a: f64, b: f64) -> f64 {
+    x*(b-a)+a
+}
+
 fn pitch_to_frequency (pitch_name: &str) -> Result<f64, ParseError> {
     match pitch_name {
          "A0" => { Ok(27.5) },
@@ -270,14 +274,32 @@ struct Note {
     frequency: f64, // In Hz
     duration: f64, // In beats
     time: f64, // In beats since last note
+    attack: f64, // Milliseconds
+    decay: f64, // Milliseconds
+    sustain: f64, // Scalar
+    release: f64 //  Milliseconds
 }
 
 impl Note {
     fn new () -> Self {
-	Self{wave_form: WaveForm::Square, volume: 0.25, frequency: 440.0, duration: 0.25, time: 0.0}
+	Self{wave_form: WaveForm::Square, volume: 0.25, frequency: 440.0, duration: 0.25, time: 0.0, attack: 0.0, decay: 0.0, sustain: 1.0, release: 0.0}
     }
     fn audio_at (self, time: f64, meta_data: MetaData) -> f64 {
-	self.wave_form.audio_at(time * self.frequency) * self.volume
+	let capped_time_ms: f64 = if time > (self.time + self.duration) * 60.0 / meta_data.tempo { (self.time + self.duration) * 60000.0 / meta_data.tempo } else { time * 1000.0 };
+	let time_since_start_ms: f64 = capped_time_ms - self.time * 60000.0 / meta_data.tempo; // in ms
+	let time_until_end_ms: f64 = (self.time + self.duration + self.release * 0.001) * 60000.0 / meta_data.tempo - time * 1000.0; // in ms
+	let mut volume_multiplier: f64 = 1.0;
+	if time_since_start_ms < self.attack {
+	    volume_multiplier *= time_since_start_ms / self.attack;
+	} else if time_since_start_ms < self.attack + self.decay {
+	    volume_multiplier *= lerp((time_since_start_ms - self.attack) / self.decay, 1.0, self.sustain);
+	} else {
+	    volume_multiplier *= self.sustain;
+	}
+	if time_until_end_ms < self.release {
+	    volume_multiplier *= lerp(time_until_end_ms / self.release, 0.0, 1.0);
+	}
+	self.wave_form.audio_at(time * self.frequency) * self.volume * volume_multiplier
     }
 }
 
@@ -294,7 +316,6 @@ impl MetaData {
 }
 
 fn print_wave( file: File ) -> () {
-    // let _ = std::io::stdout().write(&[82, 73, 70, 70, 62, 250, 0, 0, 87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, CHANNEL_COUNT, 0, 128, 62, 0, 0, 0, 125, 0, 0, 2, 0, 16, 0, 76, 73, 83, 84, 26, 0, 0, 0, 73, 78, 70, 79, 73, 83, 70, 84, 14, 0, 0, 0, 76, 97, 118, 102, 54, 48, 46, 49, 54, 46, 49, 48, 48, 0, 100, 97, 116, 97, 248, 249]);
     let mut data_buffer: Vec<u8> = Vec::<u8>::new();
     
     let lines = std::io::BufReader::new(file).lines();
@@ -334,6 +355,10 @@ fn print_wave( file: File ) -> () {
 				"pitch" => { default.frequency = pitch_to_frequency(halves[1].as_str()).unwrap(); }, // Placeholder
 				"duration" => { default.duration = halves[1].parse().unwrap(); },
 				"time" => { default.time = halves[1].parse().unwrap(); },
+				"a" | "attack" => { default.attack = halves[1].parse().unwrap(); },
+				"d" | "decay" => { default.decay = halves[1].parse().unwrap(); },
+				"s" | "sustain" => { default.sustain = halves[1].parse().unwrap(); },
+				"r" | "release" => { default.release = halves[1].parse().unwrap(); },
 				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
 			}
@@ -351,6 +376,10 @@ fn print_wave( file: File ) -> () {
 				"pitch" => { note.frequency = pitch_to_frequency(halves[1].as_str()).unwrap(); }, // Placeholder
 				"duration" => { note.duration = halves[1].parse().unwrap(); },
 				"time" => { note.time = halves[1].parse().unwrap(); },
+				"a" | "attack" => { note.attack = halves[1].parse().unwrap(); },
+				"d" | "decay" => { note.decay = halves[1].parse().unwrap(); },
+				"s" | "sustain" => { note.sustain = halves[1].parse().unwrap(); },
+				"r" | "release" => { note.release = halves[1].parse().unwrap(); },
 				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
 			}
@@ -371,34 +400,11 @@ fn print_wave( file: File ) -> () {
 	let mut audio_accumulator: f64 = 0.0;
 	for note in &notes {
 	    if current_time_beats < note.time { break; }
-	    if current_time_beats > note.time + note.duration { continue; }
+	    if current_time_beats > note.time + note.duration + note.release * 0.001 { continue; }
 	    audio_accumulator += note.audio_at(current_time_seconds , meta_data);
 	}
 	data_buffer.extend_from_slice(&sample_data(audio_accumulator));
     }
-
-    /*
-    match std::io::stdout().write(&[82, 73, 70, 70]) {
-	Ok(s) => {eprint!("Printed {} bytes\n", s);},
-	Err(err) => {eprint!("Error printing the data out: {}\n", err);}
-    }
-    match std::io::stdout().write(&(data_buffer.len() as u32 + 68).to_le_bytes()) {
-	Ok(s) => {eprint!("Printed {} bytes\n", s);},
-	Err(err) => {eprint!("Error printing the data out: {}\n", err);}
-    }
-    match std::io::stdout().write(&[87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, CHANNEL_COUNT, 0, 128, 62, 0, 0, 0, 125, 0, 0, 2, 0, 16, 0, 76, 73, 83, 84, 26, 0, 0, 0, 73, 78, 70, 79, 73, 83, 70, 84, 14, 0, 0, 0, 76, 97, 118, 102, 54, 48, 46, 49, 54, 46, 49, 48, 48, 0, 100, 97, 116, 97]) {
-	Ok(s) => {eprint!("Printed {} bytes\n", s);},
-	Err(err) => {eprint!("Error printing the data out: {}\n", err);}
-    }
-    match std::io::stdout().write(&(data_buffer.len() as u32).to_le_bytes()) {
-	Ok(s) => {eprint!("Printed {} bytes\n", s);},
-	Err(err) => {eprint!("Error printing the data out: {}\n", err);}
-    }
-    match std::io::stdout().write(&data_buffer) {
-	Ok(s) => {eprint!("Printed {} bytes\n", s);},
-	Err(err) => {eprint!("Error printing the data out: {}\n", err);}
-    }
-    */
 
     print_bytes(&[82, 73, 70, 70]);
     print_bytes(&(data_buffer.len() as u32 + 68).to_le_bytes());
