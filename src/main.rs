@@ -202,7 +202,8 @@ enum WaveForm {
     Triangle,
     Sine,
     Pulse(f64),
-    SawTooth
+    SawTooth,
+    Noise,
 }
 
 #[derive(Debug)]
@@ -219,6 +220,7 @@ impl FromStr for WaveForm {
 		    "tri" => { Ok(WaveForm::Triangle) },
 		    "sin" => { Ok(WaveForm::Sine) },
 		    "saw" => { Ok(WaveForm::SawTooth) },
+		    "noi" => { Ok(WaveForm::Noise) },
 		    "pul" => {
 			if parts.len() < 2 { return Err(ParseError); }
 			match parts[1].parse() {
@@ -245,9 +247,9 @@ impl WaveForm {
 	    },
 	    WaveForm::Triangle => {
 		if virt_time % 1.0 < 0.5 {
-		    virt_time * 2.0
+		    (virt_time % 1.0) * 2.0
 		} else {
-		    (1.0-virt_time) * 2.0
+		    (1.0-(virt_time % 1.0)) * 2.0
 		}
 	    },
 	    WaveForm::Sine => {
@@ -263,6 +265,14 @@ impl WaveForm {
 	    WaveForm::SawTooth => {
 		virt_time % 1.0
 	    },
+	    WaveForm::Noise => {
+		let mut a: f64 = 0.0;
+		for i in 0..100 {
+		    a += WaveForm::Sine.audio_at(virt_time*((i as f64).sin()+1.0));
+		}
+		eprint!("sinepower: {}\n", a / 100.0);
+		if a / 100.0 < 0.5 { 0.0 } else { 1.0 }
+	    }
 	}
     }
 }

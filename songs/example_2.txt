@@ -1,0 +1,23 @@
+META tempo=100 length=8
+DEFAULT wave=squ volume=0.25 pitch=A4 duration=0.25 a=100 d=25 s=0.20 r=100
+NOTE time=0    pitch=C4
+NOTE time=0.25 pitch=F4
+NOTE time=0.5  pitch=G4
+NOTE time=0.75 pitch=C4
+NOTE time=1    pitch=C4
+NOTE time=1.25 pitch=F4
+NOTE time=1.5  pitch=G4
+NOTE time=1.75 pitch=C4
+NOTE time=2    pitch=C4
+NOTE time=2.25 pitch=F4
+NOTE time=2.5  pitch=G4
+NOTE time=2.75 pitch=C4
+NOTE time=3    pitch=C4
+NOTE time=3.25 pitch=F4
+NOTE time=3.5  pitch=G4
+NOTE time=3.75 pitch=C4
+DEFAULT duration=1.0 volume=0.5 wave=noi pitch=A4
+NOTE time=4 pitch=A6
+NOTE time=5 pitch=A4
+NOTE time=6 pitch=A8
+NOTE time=7 pitch=A2
