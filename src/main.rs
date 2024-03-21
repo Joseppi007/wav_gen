@@ -268,7 +268,7 @@ impl WaveForm {
 	    WaveForm::Noise => {
 		let mut a: f64 = 0.0;
 		for i in 0..100 {
-		    a += WaveForm::Sine.audio_at(virt_time*((i as f64).sin()+1.0));
+		    a += WaveForm::Sine.audio_at(virt_time*(((i as f64).sin().asin()/std::f64::consts::FRAC_PI_2).asin()/std::f64::consts::FRAC_PI_2+1.0));
 		}
 		if a / 100.0 < 0.5 { 0.0 } else { 1.0 }
 	    }

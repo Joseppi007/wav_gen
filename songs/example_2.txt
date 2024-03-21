@@ -16,8 +16,12 @@ NOTE time=3    pitch=C4
 NOTE time=3.25 pitch=F4
 NOTE time=3.5  pitch=G4
 NOTE time=3.75 pitch=C4
-DEFAULT duration=1.0 volume=0.5 wave=noi pitch=A4
-NOTE time=4 pitch=A6
-NOTE time=5 pitch=A4
-NOTE time=6 pitch=A8
-NOTE time=7 pitch=A2
+DEFAULT duration=1.0 volume=0.2 wave=noi pitch=A4 a=25 d=100 s=.1 r=100
+NOTE time=4   pitch=A4
+NOTE time=4.5 pitch=B4
+NOTE time=5   pitch=C4
+NOTE time=5.5 pitch=D4
+NOTE time=6   pitch=E4
+NOTE time=6.5 pitch=F4
+NOTE time=7   pitch=G4
+NOTE time=7.5 pitch=A5
