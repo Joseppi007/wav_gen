@@ -394,6 +394,9 @@ fn print_wave( file: File ) -> () {
 			}
 			notes.push(note);
 		    },
+		    "" => {}
+		        // Circumvent the log from below--Empty lines are fine.
+		    ,
 		    first_piece => {
 			eprint!("Unrecognised command: {}\n", first_piece);
 		    }
