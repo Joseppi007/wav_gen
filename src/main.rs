@@ -310,6 +310,11 @@ impl Note {
 	}
 	self.wave_form.audio_at(time * self.frequency) * self.volume * volume_multiplier
     }
+    fn delayed_by (self, time: f64) -> Self {
+	let mut other = self.clone();
+	other.time += time;
+	other
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -324,6 +329,24 @@ impl MetaData {
     }
 }
 
+#[derive(Copy, Clone)]
+enum ParseMode {
+    Standard,
+    Repeat(RepeatPM)
+}
+
+#[derive(Copy, Clone)]
+struct RepeatPM {
+    time: f64,
+    number: u64
+}
+
+impl RepeatPM {
+    fn new () -> Self {
+	Self{time: 1.0, number: 1}
+    }
+}
+
 fn print_wave( file: File ) -> () {
     let mut data_buffer: Vec<u8> = Vec::<u8>::new();
     
@@ -332,6 +355,7 @@ fn print_wave( file: File ) -> () {
     let mut default: Note = Note::new();
     let mut meta_data: MetaData = MetaData::new();
     let mut notes: Vec<Note> = Vec::<Note>::new();
+    let mut current_mode: ParseMode = ParseMode::Standard;
     
     let sep  = Regex::new(r"[ \t]+").expect("Invalid Regex");
     let sep1 = Regex::new(r"[=]").expect("Invalid Regex");
@@ -392,7 +416,32 @@ fn print_wave( file: File ) -> () {
 				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
 			}
-			notes.push(note);
+			match current_mode {
+			    ParseMode::Standard => { notes.push(note); },
+			    ParseMode::Repeat(options) => {
+				for i in 0..options.number {
+				    notes.push(note.delayed_by(options.time * i as f64));
+				}
+			    }
+			}
+		    },
+		    "REPEAT" => {
+			eprint!("Repeat mode enabled\n");
+			let mut new_mode: RepeatPM = RepeatPM::new();
+			for piece in &pieces[1..] {
+			    let halves: Vec<String> = sep1.split(piece.as_str()).into_iter().map(|e| e.to_string()).collect();
+			    eprint!("\t{}\t{}\n", halves[0], halves[1]);
+			    match halves[0].as_str() {
+				"time" => { new_mode.time = halves[1].parse().unwrap(); },
+				"n" | "num" | "number" | "times" => { new_mode.number = halves[1].parse().unwrap(); },
+				huh => { eprint!("Unrecognised option: {}\n", huh); }
+			    }
+			}
+			current_mode = ParseMode::Repeat(new_mode);
+		    },
+		    "END_REPEAT" => {
+			eprint!("Repeat mode disabled\n");
+			current_mode = ParseMode::Standard;
 		    },
 		    "" => {}
 		        // Circumvent the log from below--Empty lines are fine.
@@ -406,6 +455,8 @@ fn print_wave( file: File ) -> () {
 	}
     }
 
+    notes.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
+    
     for sample_index in 0..(meta_data.length*(SAMPLES_PER_SECOND as f64)*(60.0/meta_data.tempo)) as u128 {
 	let current_time_seconds: f64 = (sample_index as f64) / (SAMPLES_PER_SECOND as f64);
 	let current_time_beats: f64 = current_time_seconds * (meta_data.tempo / 60.0);
@@ -435,7 +486,7 @@ fn print_bytes (bytes: &[u8]) -> () {
 		    eprint!("Failed to print {} bytes. Retrying...\n", bytes.len() - a);
 		}
 	    },
-	    Err(err) => {}
+	    Err(_err) => {}
 	}
     }
 }

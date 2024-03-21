@@ -1,0 +1,7 @@
+META tempo=100 length=4
+
+DEFAULT wave=noi volume=0.25 pitch=A4 duration=0 a=0 d=0 s=1.0 r=50 time=0
+REPEAT time=0.25 number=16
+NOTE time=0     pitch=A4
+NOTE time=0.125 pitch=C#4
+END_REPEAT
