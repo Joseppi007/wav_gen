@@ -270,7 +270,6 @@ impl WaveForm {
 		for i in 0..100 {
 		    a += WaveForm::Sine.audio_at(virt_time*((i as f64).sin()+1.0));
 		}
-		eprint!("sinepower: {}\n", a / 100.0);
 		if a / 100.0 < 0.5 { 0.0 } else { 1.0 }
 	    }
 	}
