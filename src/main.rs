@@ -384,7 +384,7 @@ fn print_wave( file: File ) -> () {
 				"frequency" => { note.frequency = halves[1].parse().unwrap(); },
 				"pitch" => { note.frequency = pitch_to_frequency(halves[1].as_str()).unwrap(); }, // Placeholder
 				"duration" => { note.duration = halves[1].parse().unwrap(); },
-				"time" => { note.time = halves[1].parse().unwrap(); },
+				"time" => { note.time = halves[1].parse::<f64>().unwrap() + default.time; },
 				"a" | "attack" => { note.attack = halves[1].parse().unwrap(); },
 				"d" | "decay" => { note.decay = halves[1].parse().unwrap(); },
 				"s" | "sustain" => { note.sustain = halves[1].parse().unwrap(); },
