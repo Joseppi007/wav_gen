@@ -1,0 +1,46 @@
+META tempo=100 length=40
+
+DEFAULT time=0 pitch=A4 duration=0.25 wave=har(1,0.333,0.333,0.5,0.125,0.0,0.25) a=25 d=100 s=0.25 r=50 volume=0.125 lfo_pitch_freq=32 lfo_pitch_mag=10
+REPEAT time=4 number=16
+NOTE time=0     pitch=G3
+NOTE time=0.125 pitch=G3
+NOTE time=0.25  pitch=G3
+NOTE time=0.5   pitch=A4
+NOTE time=1     pitch=G3
+NOTE time=1.125 pitch=G3
+NOTE time=1.25  pitch=G3
+NOTE time=1.5   pitch=B4
+NOTE time=2     pitch=G3
+NOTE time=2.125 pitch=G3
+NOTE time=2.25  pitch=G3
+NOTE time=2.5   pitch=C4
+NOTE time=3     pitch=B4
+NOTE time=3.5   pitch=A4
+END_REPEAT
+
+DEFAULT time=8 duration=2 wave=squ a=100 d=25 s=0.5 r=100 volume=0.25 lfo_pitch_freq=off lfo_pitch_mag=off
+NOTE time=0     pitch=G4
+NOTE time=2     pitch=D4
+NOTE time=4     pitch=F#4
+NOTE time=6     pitch=C4
+DEFAULT time=16 duration=1
+NOTE time=0.0   pitch=B4   duration=0.5
+NOTE time=0.5   pitch=C4   duration=1.0
+NOTE time=1.5   pitch=B4   duration=0.5
+NOTE time=2.0   pitch=B4   duration=0.5
+NOTE time=2.5   pitch=D4   duration=1.5
+NOTE time=4.0   pitch=B4   duration=0.5
+NOTE time=4.5   pitch=A4   duration=1.5
+DEFAULT time=24 duration=2
+NOTE time=0     pitch=G4
+NOTE time=2     pitch=D4
+NOTE time=4     pitch=A5
+NOTE time=6     pitch=D4
+DEFAULT time=32 duration=1
+NOTE time=0.0   pitch=G4   duration=0.5
+NOTE time=0.5   pitch=F#4   duration=1.0
+NOTE time=1.5   pitch=G4   duration=0.5
+NOTE time=2.0   pitch=G4   duration=0.5
+NOTE time=2.5   pitch=E4   duration=1.5
+NOTE time=4.0   pitch=F#4   duration=0.5
+NOTE time=4.5   pitch=G4   duration=1.5
