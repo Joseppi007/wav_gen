@@ -230,6 +230,16 @@ fn pitch_to_frequency (pitch_name: &str) -> Result<f64, ParseError> {
     }
 }
 
+fn pitch_to_frequency_or_disable (s: String) -> Result<Option<f64>, ParseError> {
+    match s.as_str() {
+	"disable" | "none" | "no" | "off" => { Result::Ok(Option::None) },
+	string => { match pitch_to_frequency(string) {
+	    Ok(num) => { Result::Ok(Option::Some(num)) },
+	    Err(err) => { Result::Err(err) }
+	}}
+    }
+}
+
 #[derive(Clone)]
 enum WaveForm {
     Square,
@@ -488,7 +498,8 @@ fn print_wave( file: File ) -> () {
 				"lfo_volume_freq" | "lfo_vol_freq" | "lfo_vol_frequency" | "lfo_volume_frequency" => { note.lfo_volume_freq = parse_f64_or_disable(halves[1].clone()).unwrap() },
 				"lfo_pitch_mag" | "lfo_frequency_mag" | "lfo_frequency_magnitude" | "lfo_freq_mag" => { note.lfo_pitch_mag = parse_f64_or_disable(halves[1].clone()).unwrap() },
 				"lfo_volume_mag" | "lfo_vol_mag" | "lfo_volume_magnitude" | "lfo_vol_magnitude" => { note.lfo_volume_mag = parse_f64_or_disable(halves[1].clone()).unwrap() },
-				"glide_to" => { note.glide_to = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"glide_to_freq" | "glide_to_frequency" => { note.glide_to = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"glide_to_pitch" | "glide_to" => { note.glide_to = pitch_to_frequency_or_disable(halves[1].clone()).unwrap() },
 				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
 			}
