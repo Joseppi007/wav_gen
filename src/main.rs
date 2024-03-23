@@ -7,6 +7,8 @@ use std::str::FromStr;
 const SAMPLES_PER_SECOND: u128 = 16000;
 const CHANNEL_COUNT: u8 = 1;
 
+/*
+// Will be removed soon.
 fn scale_time_exp (time_in: u128, frequency_start: f64, frequency_stop: f64, duration: f64) -> f64 { // Returns a virtual time in seconds
     let ln_ratio = (frequency_stop / frequency_start).ln();
     
@@ -23,6 +25,33 @@ fn scale_time_sin (time_in: u128, frequency_a: f64, frequency_b: f64, meta_frequ
     let time = (time_in as f64) / (SAMPLES_PER_SECOND as f64); // Seconds
     
     frequency_mid * time + frequency_diff * (1.0/(std::f64::consts::TAU*meta_frequency)*(meta_frequency*std::f64::consts::TAU*time).sin())
+}
+*/
+
+/**
+@param time_in The time since the start of the note
+@param frequency_start The frequency to start at
+@param frequency_end The frequency to end at
+@param lfo_frequency The frequency to wobble the frequency at
+@param duration The duration of the Entire note, encluding the release
+*/
+fn scale_time (time_in: f64, frequency_start: f64, frequency_end: f64, lfo_frequency: Option<f64>, duration: f64) -> f64 {
+    match lfo_frequency {
+	Option::Some(lfo_freq) => {
+	    if frequency_start == frequency_end {
+		duration * frequency_start * ( frequency_end / frequency_start ).powf( time_in / duration ) / ( frequency_end / frequency_start ).ln() + ( std::f64::consts::TAU * lfo_freq * time_in ).sin() / ( std::f64::consts::TAU * lfo_freq ) - ( duration * frequency_start / ( frequency_end / frequency_start ).ln() )
+	    } else {
+		duration * frequency_start + ( std::f64::consts::TAU * lfo_freq * time_in ).sin() / ( std::f64::consts::TAU * lfo_freq )
+	    }
+	},
+	Option::None => {
+	    if frequency_start == frequency_end {
+		time_in * frequency_start
+	    } else {
+		duration * frequency_start * ( frequency_end / frequency_start ).powf( time_in / duration ) / ( frequency_end / frequency_start ).ln() - ( duration * frequency_start / ( frequency_end / frequency_start ).ln() )
+	    }
+	}
+    }
 }
 
 fn sample_data (amplitude: f64) -> [u8; 2] {
@@ -196,7 +225,7 @@ fn pitch_to_frequency (pitch_name: &str) -> Result<f64, ParseError> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 enum WaveForm {
     Square,
     Triangle,
@@ -204,6 +233,7 @@ enum WaveForm {
     Pulse(f64),
     SawTooth,
     Noise,
+    Harmonics(Vec::<f64>),
 }
 
 #[derive(Debug)]
@@ -227,6 +257,10 @@ impl FromStr for WaveForm {
 			    Ok(v) => {Ok(WaveForm::Pulse(v))},
 			    Err(_) => {Err(ParseError)}
 			}
+		    },
+		    "har" => {
+			if parts.len() < 2 { return Err(ParseError); }
+			Ok(WaveForm::Harmonics(parts[1..].into_iter().map(|e| match e.parse() { Ok(v) => {v}, Err(_) => {0.0} } ).collect()))
 		    },
 		    _ => { Err(ParseError) }
 		}
@@ -271,16 +305,29 @@ impl WaveForm {
 		    a += WaveForm::Sine.audio_at(virt_time*(((i as f64).sin().asin()/std::f64::consts::FRAC_PI_2).asin()/std::f64::consts::FRAC_PI_2+1.0));
 		}
 		if a / 100.0 < 0.5 { 0.0 } else { 1.0 }
+	    },
+	    WaveForm::Harmonics(volumes) => {
+		let sum: f64 = volumes.clone().into_iter().reduce(|a, b| a + b).unwrap();
+		let mut frequency: f64 = 1.0;
+		let mut a: f64 = 0.0;
+		for volume in volumes {
+		    a += WaveForm::Sine.audio_at(virt_time*frequency) * volume;
+		    frequency += 1.0;
+		}
+		a / sum
 	    }
 	}
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 struct Note {
     wave_form: WaveForm,
     volume: f64, // From 0 to 1
     frequency: f64, // In Hz
+    glide_to: Option<f64>, // In Hz or no glide
+    lfo_pitch: Option<f64>, // In Hz or none
+    lfo_volume: Option<f64>, // In unit or none
     duration: f64, // In beats
     time: f64, // In beats since last note
     attack: f64, // Milliseconds
@@ -291,11 +338,12 @@ struct Note {
 
 impl Note {
     fn new () -> Self {
-	Self{wave_form: WaveForm::Square, volume: 0.25, frequency: 440.0, duration: 0.25, time: 0.0, attack: 0.0, decay: 0.0, sustain: 1.0, release: 0.0}
+	Self{wave_form: WaveForm::Square, volume: 0.25, frequency: 440.0, glide_to: Option::None, lfo_pitch: Option::None, lfo_volume: Option::None, duration: 0.25, time: 0.0, attack: 0.0, decay: 0.0, sustain: 1.0, release: 0.0}
     }
     fn audio_at (self, time: f64, meta_data: MetaData) -> f64 {
 	let capped_time_ms: f64 = if time > (self.time + self.duration) * 60.0 / meta_data.tempo { (self.time + self.duration) * 60000.0 / meta_data.tempo } else { time * 1000.0 };
-	let time_since_start_ms: f64 = capped_time_ms - self.time * 60000.0 / meta_data.tempo; // in ms
+	let time_since_start_s: f64 = time - self.time * 60.0 / meta_data.tempo; // in seconds (uncapped)
+	let time_since_start_ms: f64 = capped_time_ms - self.time * 60000.0 / meta_data.tempo; // in ms (capped)
 	let time_until_end_ms: f64 = (self.time + self.duration) * 60000.0 / meta_data.tempo + self.release - time * 1000.0; // in ms
 	let mut volume_multiplier: f64 = 1.0;
 	if time_since_start_ms < self.attack {
@@ -308,7 +356,7 @@ impl Note {
 	if time_until_end_ms < self.release {
 	    volume_multiplier *= lerp(time_until_end_ms / self.release, 0.0, 1.0);
 	}
-	self.wave_form.audio_at(time * self.frequency) * self.volume * volume_multiplier
+	self.wave_form.audio_at( scale_time(time_since_start_s, self.frequency, self.glide_to.unwrap_or_else(|| self.frequency), self.lfo_pitch, (self.duration + self.release * 0.001) * 60.0 / meta_data.tempo) ) * self.volume * volume_multiplier
     }
     fn delayed_by (self, time: f64) -> Self {
 	let mut other = self.clone();
@@ -344,6 +392,16 @@ struct RepeatPM {
 impl RepeatPM {
     fn new () -> Self {
 	Self{time: 1.0, number: 1}
+    }
+}
+
+fn parse_f64_or_disable (s: String) -> Result<Option<f64>, std::num::ParseFloatError> {
+    match s.as_str() {
+	"disable" | "none" | "no" | "off" => { Result::Ok(Option::None) },
+	_ => { match s.parse::<f64>() {
+	    Ok(num) => { Result::Ok(Option::Some(num)) },
+	    Err(err) => { Result::Err(err) }
+	}}
     }
 }
 
@@ -392,6 +450,9 @@ fn print_wave( file: File ) -> () {
 				"d" | "decay" => { default.decay = halves[1].parse().unwrap(); },
 				"s" | "sustain" => { default.sustain = halves[1].parse().unwrap(); },
 				"r" | "release" => { default.release = halves[1].parse().unwrap(); },
+				"lfo_pitch" | "lfo_frequency" => { default.lfo_pitch = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"lfo_volume" => { default.lfo_volume = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"glide_to" => { default.glide_to = parse_f64_or_disable(halves[1].clone()).unwrap() },
 				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
 			}
@@ -413,6 +474,9 @@ fn print_wave( file: File ) -> () {
 				"d" | "decay" => { note.decay = halves[1].parse().unwrap(); },
 				"s" | "sustain" => { note.sustain = halves[1].parse().unwrap(); },
 				"r" | "release" => { note.release = halves[1].parse().unwrap(); },
+				"lfo_pitch" | "lfo_frequency" => { note.lfo_pitch = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"lfo_volume" => { note.lfo_volume = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"glide_to" => { note.glide_to = parse_f64_or_disable(halves[1].clone()).unwrap() },
 				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
 			}
@@ -420,7 +484,7 @@ fn print_wave( file: File ) -> () {
 			    ParseMode::Standard => { notes.push(note); },
 			    ParseMode::Repeat(options) => {
 				for i in 0..options.number {
-				    notes.push(note.delayed_by(options.time * i as f64));
+				    notes.push(note.clone().delayed_by(options.time * i as f64));
 				}
 			    }
 			}
@@ -464,7 +528,7 @@ fn print_wave( file: File ) -> () {
 	for note in &notes {
 	    if current_time_beats < note.time { break; }
 	    if current_time_beats > note.time + note.duration + ( note.release * meta_data.tempo / 60000.0 ) { continue; }
-	    audio_accumulator += note.audio_at(current_time_seconds , meta_data);
+	    audio_accumulator += note.clone().audio_at(current_time_seconds , meta_data);
 	}
 	data_buffer.extend_from_slice(&sample_data(audio_accumulator));
     }
