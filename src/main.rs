@@ -29,27 +29,32 @@ fn scale_time_sin (time_in: u128, frequency_a: f64, frequency_b: f64, meta_frequ
 */
 
 /**
+@param global_time The time since the start of the composition
 @param time_in The time since the start of the note
 @param frequency_start The frequency to start at
 @param frequency_end The frequency to end at
 @param lfo_frequency The frequency to wobble the frequency at
 @param duration The duration of the Entire note, encluding the release
 */
-fn scale_time (time_in: f64, frequency_start: f64, frequency_end: f64, lfo_frequency: Option<f64>, duration: f64) -> f64 {
-    match lfo_frequency {
-	Option::Some(lfo_freq) => {
+fn scale_time (global_time: f64, time_in: f64, frequency_start: f64, frequency_end: f64, lfo_frequency: Option<f64>, lfo_magnitude: Option<f64>, duration: f64) -> f64 {
+    match (lfo_frequency, lfo_magnitude) {
+	(Option::Some(lfo_freq), Option::Some(lfo_mag)) => {
 	    if frequency_start == frequency_end {
-		duration * frequency_start * ( frequency_end / frequency_start ).powf( time_in / duration ) / ( frequency_end / frequency_start ).ln() + ( std::f64::consts::TAU * lfo_freq * time_in ).sin() / ( std::f64::consts::TAU * lfo_freq ) - ( duration * frequency_start / ( frequency_end / frequency_start ).ln() )
+		global_time * frequency_start + lfo_mag * ( std::f64::consts::TAU * lfo_freq * time_in ).sin() / ( std::f64::consts::TAU * lfo_freq )
 	    } else {
-		duration * frequency_start + ( std::f64::consts::TAU * lfo_freq * time_in ).sin() / ( std::f64::consts::TAU * lfo_freq )
+		duration * frequency_start * ( frequency_end / frequency_start ).powf( time_in / duration ) / ( frequency_end / frequency_start ).ln() + lfo_mag * ( std::f64::consts::TAU * lfo_freq * time_in ).sin() / ( std::f64::consts::TAU * lfo_freq ) - ( duration * frequency_start / ( frequency_end / frequency_start ).ln() )
 	    }
 	},
-	Option::None => {
+	(Option::None, Option::None) => {
 	    if frequency_start == frequency_end {
-		time_in * frequency_start
+		global_time * frequency_start
 	    } else {
 		duration * frequency_start * ( frequency_end / frequency_start ).powf( time_in / duration ) / ( frequency_end / frequency_start ).ln() - ( duration * frequency_start / ( frequency_end / frequency_start ).ln() )
 	    }
+	},
+	(Option::Some(_), Option::None) | (Option::None, Option::Some(_)) => {
+	    eprint!("Only one of the two lfo parameters has been set!");
+	    0.0
 	}
     }
 }
@@ -326,8 +331,10 @@ struct Note {
     volume: f64, // From 0 to 1
     frequency: f64, // In Hz
     glide_to: Option<f64>, // In Hz or no glide
-    lfo_pitch: Option<f64>, // In Hz or none
-    lfo_volume: Option<f64>, // In unit or none
+    lfo_pitch_freq: Option<f64>, // In Hz or none
+    lfo_pitch_mag: Option<f64>, // In Hz or none
+    lfo_volume_freq: Option<f64>, // In Hz or none
+    lfo_volume_mag: Option<f64>, // In unit or none
     duration: f64, // In beats
     time: f64, // In beats since last note
     attack: f64, // Milliseconds
@@ -338,7 +345,7 @@ struct Note {
 
 impl Note {
     fn new () -> Self {
-	Self{wave_form: WaveForm::Square, volume: 0.25, frequency: 440.0, glide_to: Option::None, lfo_pitch: Option::None, lfo_volume: Option::None, duration: 0.25, time: 0.0, attack: 0.0, decay: 0.0, sustain: 1.0, release: 0.0}
+	Self{wave_form: WaveForm::Square, volume: 0.25, frequency: 440.0, glide_to: Option::None, lfo_pitch_freq: Option::None, lfo_volume_freq: Option::None, lfo_pitch_mag: Option::None, lfo_volume_mag: Option::None, duration: 0.25, time: 0.0, attack: 0.0, decay: 0.0, sustain: 1.0, release: 0.0}
     }
     fn audio_at (self, time: f64, meta_data: MetaData) -> f64 {
 	let capped_time_ms: f64 = if time > (self.time + self.duration) * 60.0 / meta_data.tempo { (self.time + self.duration) * 60000.0 / meta_data.tempo } else { time * 1000.0 };
@@ -356,7 +363,8 @@ impl Note {
 	if time_until_end_ms < self.release {
 	    volume_multiplier *= lerp(time_until_end_ms / self.release, 0.0, 1.0);
 	}
-	self.wave_form.audio_at( scale_time(time_since_start_s, self.frequency, self.glide_to.unwrap_or_else(|| self.frequency), self.lfo_pitch, (self.duration + self.release * 0.001) * 60.0 / meta_data.tempo) ) * self.volume * volume_multiplier
+	let vol: f64 = match (self.lfo_volume_freq, self.lfo_volume_mag) { (Option::Some(lfo_volume_freq), Option::Some(lfo_volume_mag)) => {self.volume+WaveForm::Sine.audio_at(time*lfo_volume_freq)*lfo_volume_mag}, _ => {self.volume} };
+	self.wave_form.audio_at( scale_time(time, time_since_start_s, self.frequency, self.glide_to.unwrap_or_else(|| self.frequency), self.lfo_pitch_freq, self.lfo_pitch_mag, (self.duration + self.release * 0.001) * 60.0 / meta_data.tempo) ) * vol * volume_multiplier
     }
     fn delayed_by (self, time: f64) -> Self {
 	let mut other = self.clone();
@@ -450,8 +458,10 @@ fn print_wave( file: File ) -> () {
 				"d" | "decay" => { default.decay = halves[1].parse().unwrap(); },
 				"s" | "sustain" => { default.sustain = halves[1].parse().unwrap(); },
 				"r" | "release" => { default.release = halves[1].parse().unwrap(); },
-				"lfo_pitch" | "lfo_frequency" => { default.lfo_pitch = parse_f64_or_disable(halves[1].clone()).unwrap() },
-				"lfo_volume" => { default.lfo_volume = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"lfo_pitch_freq" | "lfo_frequency_freq" | "lfo_frequency_frequency" | "lfo_freq_freq" | "lfo_meta_freq" => { default.lfo_pitch_freq = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"lfo_volume_freq" | "lfo_vol_freq" | "lfo_vol_frequency" | "lfo_volume_frequency" => { default.lfo_volume_freq = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"lfo_pitch_mag" | "lfo_frequency_mag" | "lfo_frequency_magnitude" | "lfo_freq_mag" => { default.lfo_pitch_mag = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"lfo_volume_mag" | "lfo_vol_mag" | "lfo_volume_magnitude" | "lfo_vol_magnitude" => { default.lfo_volume_mag = parse_f64_or_disable(halves[1].clone()).unwrap() },
 				"glide_to" => { default.glide_to = parse_f64_or_disable(halves[1].clone()).unwrap() },
 				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
@@ -474,8 +484,10 @@ fn print_wave( file: File ) -> () {
 				"d" | "decay" => { note.decay = halves[1].parse().unwrap(); },
 				"s" | "sustain" => { note.sustain = halves[1].parse().unwrap(); },
 				"r" | "release" => { note.release = halves[1].parse().unwrap(); },
-				"lfo_pitch" | "lfo_frequency" => { note.lfo_pitch = parse_f64_or_disable(halves[1].clone()).unwrap() },
-				"lfo_volume" => { note.lfo_volume = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"lfo_pitch_freq" | "lfo_frequency_freq" | "lfo_frequency_frequency" | "lfo_freq_freq" | "lfo_meta_freq" => { note.lfo_pitch_freq = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"lfo_volume_freq" | "lfo_vol_freq" | "lfo_vol_frequency" | "lfo_volume_frequency" => { note.lfo_volume_freq = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"lfo_pitch_mag" | "lfo_frequency_mag" | "lfo_frequency_magnitude" | "lfo_freq_mag" => { note.lfo_pitch_mag = parse_f64_or_disable(halves[1].clone()).unwrap() },
+				"lfo_volume_mag" | "lfo_vol_mag" | "lfo_volume_magnitude" | "lfo_vol_magnitude" => { note.lfo_volume_mag = parse_f64_or_disable(halves[1].clone()).unwrap() },
 				"glide_to" => { note.glide_to = parse_f64_or_disable(halves[1].clone()).unwrap() },
 				huh => { eprint!("Unrecognised option: {}\n", huh); }
 			    }
