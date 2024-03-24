@@ -41,15 +41,56 @@ NOTE time=2     pitch=G3
 NOTE time=3     pitch=D4
 NOTE time=4	pitch=C#4 duration=2
 
-DEFAULT time=40 duration=1.5 a=0 d=0 r=0
-NOTE time=0     pitch=D4 a=25 d=50
+DEFAULT time=40 duration=2
+NOTE time=0     pitch=D4
+NOTE time=0     pitch=G4
 NOTE time=2     pitch=C#4
+NOTE time=2     pitch=F#4
 NOTE time=4     pitch=G3
+NOTE time=4     pitch=C#4
 NOTE time=6     pitch=A4
-DEFAULT duration=0.5
-NOTE time=1.5   pitch=D4  glide_to_pitch=C#4
-NOTE time=3.5   pitch=C#4 glide_to_pitch=G3
-NOTE time=5.5   pitch=G3  glide_to_pitch=A4
-NOTE time=7.5   pitch=A4  glide_to_pitch=D4 r=50
-DEFAULT a=25 d=50 r=50
+NOTE time=6     pitch=D4
+DEFAULT time=48 duration=0.5
+NOTE time=0     pitch=G3 duration=0.25
+NOTE time=0     pitch=C#4 duration=0.25
+NOTE time=0.25  pitch=A4 duration=0.75
+NOTE time=0.25  pitch=D4 duration=0.75
+NOTE time=1     pitch=G3 duration=0.25
+NOTE time=1     pitch=C#4 duration=0.25
+NOTE time=1.25  pitch=A4 duration=0.75
+NOTE time=1.25  pitch=D4 duration=0.75
+DEFAULT duration=1
+NOTE time=2     pitch=G3
+NOTE time=2     pitch=C#4
+NOTE time=3     pitch=D3
+NOTE time=3     pitch=G3
+NOTE time=4	pitch=A4 duration=2
+NOTE time=4	pitch=E3 duration=2
+
+DEFAULT time=56 duration=2
+NOTE time=0     pitch=D4
+NOTE time=0     pitch=G4
+NOTE time=2     pitch=C#4
+NOTE time=2     pitch=F#4
+NOTE time=4     pitch=G3
+NOTE time=4     pitch=C#4
+NOTE time=6     pitch=A4
+NOTE time=6     pitch=D4
+DEFAULT time=64 duration=0.5
+NOTE time=0     pitch=G3 duration=0.25
+NOTE time=0     pitch=C#4 duration=0.25
+NOTE time=0.25  pitch=A4 duration=0.75
+NOTE time=0.25  pitch=D4 duration=0.75
+NOTE time=1     pitch=G3 duration=0.25
+NOTE time=1     pitch=C#4 duration=0.25
+NOTE time=1.25  pitch=A4 duration=0.75
+NOTE time=1.25  pitch=D4 duration=0.75
+DEFAULT duration=1
+NOTE time=2     pitch=G3
+NOTE time=2     pitch=C#4
+NOTE time=3     pitch=D4
+NOTE time=3     pitch=G4
+NOTE time=4	pitch=C#4 duration=2
+NOTE time=4	pitch=F#4 duration=2
+
 
