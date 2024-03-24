@@ -1,0 +1,55 @@
+META tempo=100 length=100
+
+REPEAT time=4 num=25
+DEFAULT wave=har(1,.5,.5,.0,.125,.0,.33,.5,.125) volume=0.125 time=0 a=25 d=50 s=.75 r=50 pitch=A4 duration=0.25
+NOTE time=0     pitch=D2
+NOTE time=0.5   pitch=D3 wave=noi volume=0.0625 s=.25 d=100
+NOTE time=1     pitch=D3
+NOTE time=2     pitch=D2
+NOTE time=2.25  pitch=D2
+NOTE time=2.5   pitch=D2
+NOTE time=3     pitch=D3
+END_REPEAT
+
+DEFAULT wave=har(1,.333,.125,.25,.5,.5,.125,.0,.5) volume=0.25 time=8 duration=2 lfo_pitch_freq=8 lfo_pitch_mag=15
+NOTE time=0     pitch=D4
+NOTE time=2     pitch=C#4
+NOTE time=4     pitch=G3
+NOTE time=6     pitch=A4
+DEFAULT time=16 duration=0.5
+NOTE time=0     pitch=G3
+NOTE time=0.5   pitch=A4
+NOTE time=1     pitch=G3
+NOTE time=1.5   pitch=A4
+DEFAULT duration=1
+NOTE time=2     pitch=G3
+NOTE time=3     pitch=D3
+NOTE time=4	pitch=E3 duration=2
+
+DEFAULT time=24 duration=2
+NOTE time=0     pitch=D4
+NOTE time=2     pitch=C#4
+NOTE time=4     pitch=G3
+NOTE time=6     pitch=A4
+DEFAULT time=32 duration=0.5
+NOTE time=0     pitch=G3
+NOTE time=0.5   pitch=A4
+NOTE time=1     pitch=G3
+NOTE time=1.5   pitch=A4
+DEFAULT duration=1
+NOTE time=2     pitch=G3
+NOTE time=3     pitch=D4
+NOTE time=4	pitch=C#4 duration=2
+
+DEFAULT time=40 duration=1.5 a=0 d=0 r=0
+NOTE time=0     pitch=D4 a=25 d=50
+NOTE time=2     pitch=C#4
+NOTE time=4     pitch=G3
+NOTE time=6     pitch=A4
+DEFAULT duration=0.5
+NOTE time=1.5   pitch=D4  glide_to_pitch=C#4
+NOTE time=3.5   pitch=C#4 glide_to_pitch=G3
+NOTE time=5.5   pitch=G3  glide_to_pitch=A4
+NOTE time=7.5   pitch=A4  glide_to_pitch=D4 r=50
+DEFAULT a=25 d=50 r=50
+
