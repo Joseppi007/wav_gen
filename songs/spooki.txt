@@ -1,6 +1,6 @@
-META tempo=100 length=100
+META tempo=100 length=116
 
-REPEAT time=4 num=25
+REPEAT time=4 num=29
 DEFAULT wave=har(1,.5,.5,.0,.125,.0,.33,.5,.125) volume=0.125 time=0 a=25 d=50 s=.75 r=50 pitch=A4 duration=0.25
 NOTE time=0     pitch=D2
 NOTE time=0.5   pitch=D3 wave=noi volume=0.0625 s=.25 d=100
@@ -93,4 +93,60 @@ NOTE time=3     pitch=G4
 NOTE time=4	pitch=C#4 duration=2
 NOTE time=4	pitch=F#4 duration=2
 
+DEFAULT time=72 duration=2
+NOTE time=0     pitch=D4
+NOTE time=0     pitch=G4
+NOTE time=2     pitch=C#4
+NOTE time=2     pitch=A5
+NOTE time=4     pitch=G3
+NOTE time=4     pitch=C#4
+NOTE time=6     pitch=A4
+NOTE time=6     pitch=F#4
+DEFAULT time=80 duration=0.5
+NOTE time=0     pitch=G3 duration=0.25
+NOTE time=0     pitch=C#4 duration=0.25
+NOTE time=0.25  pitch=A4 duration=0.75
+NOTE time=0.25  pitch=F#4 duration=0.75
+NOTE time=1     pitch=G3 duration=0.25
+NOTE time=1     pitch=C#4 duration=0.25
+NOTE time=1.25  pitch=A4 duration=0.75
+NOTE time=1.25  pitch=F#4 duration=0.75
+DEFAULT duration=1
+NOTE time=2     pitch=G3
+NOTE time=2     pitch=C#4
+NOTE time=3     pitch=D3
+NOTE time=3     pitch=B4
+NOTE time=4	pitch=A4 duration=2
+NOTE time=4	pitch=F#3 duration=2
 
+DEFAULT time=88 duration=2
+NOTE time=0     pitch=D4
+NOTE time=0     pitch=G4
+NOTE time=2     pitch=C#4
+NOTE time=2     pitch=A5
+NOTE time=4     pitch=G3
+NOTE time=4     pitch=C#4
+NOTE time=6     pitch=A4
+NOTE time=6     pitch=F#4
+DEFAULT time=96 duration=0.5
+NOTE time=0     pitch=G3 duration=0.25
+NOTE time=0     pitch=C#4 duration=0.25
+NOTE time=0.25  pitch=A4 duration=0.75
+NOTE time=0.25  pitch=F#4 duration=0.75
+NOTE time=1     pitch=G3 duration=0.25
+NOTE time=1     pitch=C#4 duration=0.25
+NOTE time=1.25  pitch=A4 duration=0.75
+NOTE time=1.25  pitch=F#4 duration=0.75
+DEFAULT duration=1
+NOTE time=2     pitch=G3
+NOTE time=2     pitch=C#4
+NOTE time=3     pitch=D4
+NOTE time=3     pitch=B5
+NOTE time=4	pitch=C#4 duration=2
+NOTE time=4	pitch=B5 duration=2
+
+NOTE time=8     pitch=E4 duration=2
+NOTE time=8     pitch=D5 duration=2
+
+NOTE time=12     pitch=D4 duration=4
+NOTE time=12     pitch=D5 duration=4
